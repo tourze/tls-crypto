@@ -33,14 +33,9 @@ class X448 implements KeyExchangeInterface
      */
     public function generateKeyPair(array $options = []): array
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new KeyExchangeException('libsodium扩展未加载，无法使用X448');
-        }
-
         // 检查是否支持X448
-        if (!defined('SODIUM_CRYPTO_CORE_RISTRETTO255_SCALARBYTES')) {
-            throw new KeyExchangeException('当前libsodium版本不支持X448');
+        if (!defined('ParagonIE_Sodium_Compat::CRYPTO_CORE_RISTRETTO255_SCALARBYTES')) {
+            throw new KeyExchangeException('当前sodium_compat版本不支持X448');
         }
 
         try {
@@ -51,8 +46,8 @@ class X448 implements KeyExchangeInterface
             // 如果将来支持了，代码应类似以下：
             /*
             $privateKey = random_bytes(56); // X448使用56字节私钥
-            $publicKey = sodium_crypto_scalarmult_ristretto448_base($privateKey);
-            
+            $publicKey = ParagonIE_Sodium_Compat::crypto_scalarmult_ristretto448_base($privateKey);
+
             return [
                 'privateKey' => $privateKey,
                 'publicKey' => $publicKey,
@@ -74,14 +69,9 @@ class X448 implements KeyExchangeInterface
      */
     public function computeSharedSecret(string $privateKey, string $publicKey, array $options = []): string
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new KeyExchangeException('libsodium扩展未加载，无法使用X448');
-        }
-
         // 检查是否支持X448
-        if (!defined('SODIUM_CRYPTO_CORE_RISTRETTO255_SCALARBYTES')) {
-            throw new KeyExchangeException('当前libsodium版本不支持X448');
+        if (!defined('ParagonIE_Sodium_Compat::CRYPTO_CORE_RISTRETTO255_SCALARBYTES')) {
+            throw new KeyExchangeException('当前sodium_compat版本不支持X448');
         }
 
         try {
@@ -94,13 +84,13 @@ class X448 implements KeyExchangeInterface
             if (strlen($privateKey) !== 56) {
                 throw new KeyExchangeException('无效的X448私钥长度');
             }
-            
+
             if (strlen($publicKey) !== 56) {
                 throw new KeyExchangeException('无效的X448公钥长度');
             }
-            
+
             // 使用X448算法计算共享密钥
-            $sharedSecret = sodium_crypto_scalarmult_ristretto448($privateKey, $publicKey);
+            $sharedSecret = ParagonIE_Sodium_Compat::crypto_scalarmult_ristretto448($privateKey, $publicKey);
             return $sharedSecret;
             */
         } catch (\Exception $e) {

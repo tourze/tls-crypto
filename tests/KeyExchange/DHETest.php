@@ -202,9 +202,4 @@ class DHETest extends TestCase
         $this->assertNotEmpty($sharedSecretA);
         $this->assertEquals($sharedSecretA, $sharedSecretB, "Shared secrets should be identical.");
     }
-
-    protected function tearDown(): void
-    {
-        restore_error_handler();
-    }
 }

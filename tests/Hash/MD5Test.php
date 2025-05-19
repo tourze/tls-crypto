@@ -61,9 +61,4 @@ class MD5Test extends TestCase
             $this->fail('MD5 createContext threw an exception unexpectedly: ' . $e->getMessage());
         }
     }
-
-    protected function tearDown(): void
-    {
-        restore_error_handler();
-    }
 }

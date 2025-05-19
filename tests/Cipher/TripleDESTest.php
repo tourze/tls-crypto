@@ -120,9 +120,4 @@ class TripleDESTest extends TestCase
         $this->expectExceptionMessage('无效的3DES密钥大小，有效值为128或192位');
         new TripleDES(64);
     }
-
-    protected function tearDown(): void
-    {
-        restore_error_handler();
-    }
-} 
+}

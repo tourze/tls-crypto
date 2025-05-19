@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tourze\TLSCrypto\AsymmetricCipher;
 
+use ParagonIE_Sodium_Compat;
 use Tourze\TLSCrypto\Contract\AsymmetricCipherInterface;
 use Tourze\TLSCrypto\Exception\AsymmetricCipherException;
 
 /**
  * Ed25519签名算法实现
- * 
+ *
  * Ed25519是基于Edwards25519曲线的EdDSA签名算法变种
  * 主要用于数字签名，而非加密/解密
  */
@@ -34,29 +35,24 @@ class Ed25519 implements AsymmetricCipherInterface
      */
     public function generateKeyPair(array $options = []): array
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new AsymmetricCipherException('libsodium扩展未加载，无法使用Ed25519');
-        }
-        
         try {
             // 生成Ed25519密钥对
-            $keyPair = sodium_crypto_sign_keypair();
-            $privateKey = sodium_crypto_sign_secretkey($keyPair);
-            $publicKey = sodium_crypto_sign_publickey($keyPair);
-            
+            $keyPair = ParagonIE_Sodium_Compat::crypto_sign_keypair();
+            $privateKey = ParagonIE_Sodium_Compat::crypto_sign_secretkey($keyPair);
+            $publicKey = ParagonIE_Sodium_Compat::crypto_sign_publickey($keyPair);
+
             return [
                 'privateKey' => $privateKey,
                 'publicKey' => $publicKey,
             ];
-        } catch (\SodiumException $e) {
+        } catch (\Exception $e) {
             throw new AsymmetricCipherException('Ed25519密钥对生成失败: ' . $e->getMessage());
         }
     }
 
     /**
      * 使用公钥加密数据
-     * 
+     *
      * 注意：Ed25519是签名算法，不支持加密操作
      *
      * @param string $plaintext 明文数据
@@ -72,7 +68,7 @@ class Ed25519 implements AsymmetricCipherInterface
 
     /**
      * 使用私钥解密数据
-     * 
+     *
      * 注意：Ed25519是签名算法，不支持解密操作
      *
      * @param string $ciphertext 密文数据
@@ -97,20 +93,15 @@ class Ed25519 implements AsymmetricCipherInterface
      */
     public function sign(string $data, string $privateKey, array $options = []): string
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new AsymmetricCipherException('libsodium扩展未加载，无法使用Ed25519');
-        }
-        
         // 验证私钥长度
-        if (strlen($privateKey) !== SODIUM_CRYPTO_SIGN_SECRETKEYBYTES) {
+        if (strlen($privateKey) !== ParagonIE_Sodium_Compat::CRYPTO_SIGN_SECRETKEYBYTES) {
             throw new AsymmetricCipherException('无效的Ed25519私钥长度');
         }
-        
+
         try {
             // 使用Ed25519算法进行签名
-            return sodium_crypto_sign_detached($data, $privateKey);
-        } catch (\SodiumException $e) {
+            return ParagonIE_Sodium_Compat::crypto_sign_detached($data, $privateKey);
+        } catch (\Exception $e) {
             throw new AsymmetricCipherException('Ed25519签名失败: ' . $e->getMessage());
         }
     }
@@ -127,25 +118,20 @@ class Ed25519 implements AsymmetricCipherInterface
      */
     public function verify(string $data, string $signature, string $publicKey, array $options = []): bool
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new AsymmetricCipherException('libsodium扩展未加载，无法使用Ed25519');
-        }
-        
         // 验证公钥长度
-        if (strlen($publicKey) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+        if (strlen($publicKey) !== ParagonIE_Sodium_Compat::CRYPTO_SIGN_PUBLICKEYBYTES) {
             throw new AsymmetricCipherException('无效的Ed25519公钥长度');
         }
-        
+
         // 验证签名长度
-        if (strlen($signature) !== SODIUM_CRYPTO_SIGN_BYTES) {
+        if (strlen($signature) !== ParagonIE_Sodium_Compat::CRYPTO_SIGN_BYTES) {
             throw new AsymmetricCipherException('无效的Ed25519签名长度');
         }
-        
+
         try {
             // 验证签名
-            return sodium_crypto_sign_verify_detached($signature, $data, $publicKey);
-        } catch (\SodiumException $e) {
+            return ParagonIE_Sodium_Compat::crypto_sign_verify_detached($signature, $data, $publicKey);
+        } catch (\Exception $e) {
             throw new AsymmetricCipherException('Ed25519签名验证失败: ' . $e->getMessage());
         }
     }

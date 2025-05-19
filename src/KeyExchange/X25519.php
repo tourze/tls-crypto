@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tourze\TLSCrypto\KeyExchange;
 
+use ParagonIE_Sodium_Compat;
 use Tourze\TLSCrypto\Contract\KeyExchangeInterface;
 use Tourze\TLSCrypto\Exception\KeyExchangeException;
 
@@ -33,15 +34,10 @@ class X25519 implements KeyExchangeInterface
      */
     public function generateKeyPair(array $options = []): array
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new KeyExchangeException('libsodium扩展未加载，无法使用X25519');
-        }
-
         try {
             // 生成X25519密钥对
-            $privateKey = random_bytes(SODIUM_CRYPTO_BOX_SECRETKEYBYTES);
-            $publicKey = sodium_crypto_scalarmult_base($privateKey);
+            $privateKey = random_bytes(ParagonIE_Sodium_Compat::CRYPTO_BOX_SECRETKEYBYTES);
+            $publicKey = ParagonIE_Sodium_Compat::crypto_scalarmult_base($privateKey);
 
             return [
                 'privateKey' => $privateKey,
@@ -63,23 +59,18 @@ class X25519 implements KeyExchangeInterface
      */
     public function computeSharedSecret(string $privateKey, string $publicKey, array $options = []): string
     {
-        // 检查sodium扩展是否加载
-        if (!extension_loaded('sodium')) {
-            throw new KeyExchangeException('libsodium扩展未加载，无法使用X25519');
-        }
-
         // 验证密钥长度
-        if (strlen($privateKey) !== SODIUM_CRYPTO_BOX_SECRETKEYBYTES) {
+        if (strlen($privateKey) !== ParagonIE_Sodium_Compat::CRYPTO_BOX_SECRETKEYBYTES) {
             throw new KeyExchangeException('无效的X25519私钥长度');
         }
 
-        if (strlen($publicKey) !== SODIUM_CRYPTO_BOX_PUBLICKEYBYTES) {
+        if (strlen($publicKey) !== ParagonIE_Sodium_Compat::CRYPTO_BOX_PUBLICKEYBYTES) {
             throw new KeyExchangeException('无效的X25519公钥长度');
         }
 
         try {
             // 使用X25519算法计算共享密钥
-            $sharedSecret = sodium_crypto_scalarmult($privateKey, $publicKey);
+            $sharedSecret = ParagonIE_Sodium_Compat::crypto_scalarmult($privateKey, $publicKey);
             return $sharedSecret;
         } catch (\SodiumException $e) {
             throw new KeyExchangeException('X25519共享密钥计算失败: ' . $e->getMessage());

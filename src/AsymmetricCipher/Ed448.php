@@ -21,34 +21,38 @@ class Ed448 implements AsymmetricCipherInterface
      * Ed448私钥字节长度 (114字节)
      */
     private const SECRET_KEY_BYTES = 114;
-    
+
     /**
      * Ed448公钥字节长度 (57字节)
      */
     private const PUBLIC_KEY_BYTES = 57;
-    
+
     /**
      * Ed448签名字节长度 (114字节)
      */
     private const SIGNATURE_BYTES = 114;
-    
+
+    /**
+     * OpenSSL ED448算法标识
+     *
+     * 注意：某些PHP版本可能没有定义OPENSSL_ALGO_ED448常量
+     */
+    private const OPENSSL_ALGO_ED448 = 'ed448';
+
     /**
      * 是否使用OpenSSL的替代实现
      */
     private bool $useOpenSSL;
-    
+
     /**
      * 构造函数
      */
     public function __construct()
     {
-        // 检查是否使用OpenSSL替代实现
-        // PHP原生sodium可能不支持Ed448，使用OpenSSL的替代实现
-        $this->useOpenSSL = 
-            !extension_loaded('sodium') || 
-            !function_exists('sodium_crypto_sign_ed448_keypair');
+        // sodium_compat目前不支持Ed448，使用OpenSSL的替代实现
+        $this->useOpenSSL = true;
     }
-    
+
     /**
      * 获取算法名称
      *
@@ -66,22 +70,15 @@ class Ed448 implements AsymmetricCipherInterface
      */
     private function checkSupport(): void
     {
-        // 如果使用OpenSSL替代实现，检查OpenSSL扩展
-        if ($this->useOpenSSL) {
-            if (!extension_loaded('openssl')) {
-                throw new AsymmetricCipherException('OpenSSL扩展未加载，无法使用Ed448替代实现');
-            }
-            
-            // 检查OpenSSL是否支持Ed448曲线
-            $curves = openssl_get_curve_names();
-            if (!in_array('ED448', $curves)) {
-                throw new AsymmetricCipherException('当前OpenSSL版本不支持Ed448曲线');
-            }
-        } else {
-            // 使用libsodium实现，检查函数是否存在
-            if (!function_exists('sodium_crypto_sign_ed448_keypair')) {
-                throw new AsymmetricCipherException('当前PHP版本或libsodium版本不支持Ed448');
-            }
+        // 使用OpenSSL替代实现，检查OpenSSL扩展
+        if (!extension_loaded('openssl')) {
+            throw new AsymmetricCipherException('OpenSSL扩展未加载，无法使用Ed448替代实现');
+        }
+
+        // 检查OpenSSL是否支持Ed448曲线
+        $curves = openssl_get_curve_names();
+        if (!in_array('ED448', $curves)) {
+            throw new AsymmetricCipherException('当前OpenSSL版本不支持Ed448曲线');
         }
     }
 
@@ -95,54 +92,38 @@ class Ed448 implements AsymmetricCipherInterface
     public function generateKeyPair(array $options = []): array
     {
         $this->checkSupport();
-        
-        if (!$this->useOpenSSL) {
-            try {
-                // 使用libsodium本地实现
-                $keyPair = sodium_crypto_sign_ed448_keypair();
-                $privateKey = sodium_crypto_sign_ed448_secretkey($keyPair);
-                $publicKey = sodium_crypto_sign_ed448_publickey($keyPair);
-                
-                return [
-                    'privateKey' => $privateKey,
-                    'publicKey' => $publicKey,
-                ];
-            } catch (\SodiumException $e) {
-                throw new AsymmetricCipherException('Ed448密钥对生成失败: ' . $e->getMessage());
+
+        // 使用OpenSSL替代实现
+        try {
+            // 创建EC密钥对
+            $config = [
+                'curve_name' => 'ED448',
+                'private_key_type' => OPENSSL_KEYTYPE_EC,
+            ];
+            
+            $res = openssl_pkey_new($config);
+            if ($res === false) {
+                throw new AsymmetricCipherException('Ed448密钥对生成失败: ' . openssl_error_string());
             }
-        } else {
-            // 使用OpenSSL替代实现
-            try {
-                // 创建EC密钥对
-                $config = [
-                    'curve_name' => 'ED448',
-                    'private_key_type' => OPENSSL_KEYTYPE_EC,
-                ];
-                
-                $res = openssl_pkey_new($config);
-                if ($res === false) {
-                    throw new AsymmetricCipherException('Ed448密钥对生成失败: ' . openssl_error_string());
-                }
-                
-                // 导出私钥和公钥
-                if (!openssl_pkey_export($res, $privateKeyPem)) {
-                    throw new AsymmetricCipherException('Ed448私钥导出失败: ' . openssl_error_string());
-                }
-                
-                $details = openssl_pkey_get_details($res);
-                if ($details === false) {
-                    throw new AsymmetricCipherException('获取Ed448密钥详情失败: ' . openssl_error_string());
-                }
-                
-                $publicKeyPem = $details['key'];
-                
-                return [
-                    'privateKey' => $privateKeyPem,
-                    'publicKey' => $publicKeyPem,
-                ];
-            } catch (\Exception $e) {
-                throw new AsymmetricCipherException('Ed448密钥对生成失败: ' . $e->getMessage());
+            
+            // 导出私钥和公钥
+            if (!openssl_pkey_export($res, $privateKeyPem)) {
+                throw new AsymmetricCipherException('Ed448私钥导出失败: ' . openssl_error_string());
             }
+            
+            $details = openssl_pkey_get_details($res);
+            if ($details === false) {
+                throw new AsymmetricCipherException('获取Ed448密钥详情失败: ' . openssl_error_string());
+            }
+            
+            $publicKeyPem = $details['key'];
+            
+            return [
+                'privateKey' => $privateKeyPem,
+                'publicKey' => $publicKeyPem,
+            ];
+        } catch (\Exception $e) {
+            throw new AsymmetricCipherException('Ed448密钥对生成失败: ' . $e->getMessage());
         }
     }
 
@@ -191,44 +172,29 @@ class Ed448 implements AsymmetricCipherInterface
     {
         $this->checkSupport();
         
-        if (!$this->useOpenSSL) {
-            // 使用libsodium本地实现
-            try {
-                // 验证私钥长度
-                if (strlen($privateKey) !== self::SECRET_KEY_BYTES) {
-                    throw new AsymmetricCipherException('无效的Ed448私钥长度');
-                }
-                
-                // 使用Ed448算法进行签名
-                return sodium_crypto_sign_ed448_detached($data, $privateKey);
-            } catch (\SodiumException $e) {
-                throw new AsymmetricCipherException('Ed448签名失败: ' . $e->getMessage());
+        // 使用OpenSSL替代实现
+        try {
+            // 加载私钥
+            $privKey = openssl_pkey_get_private($privateKey);
+            if ($privKey === false) {
+                throw new AsymmetricCipherException('加载Ed448私钥失败: ' . openssl_error_string());
             }
-        } else {
-            // 使用OpenSSL替代实现
-            try {
-                // 加载私钥
-                $privKey = openssl_pkey_get_private($privateKey);
-                if ($privKey === false) {
-                    throw new AsymmetricCipherException('加载Ed448私钥失败: ' . openssl_error_string());
-                }
-                
-                // 验证私钥类型
-                $details = openssl_pkey_get_details($privKey);
-                if ($details === false || $details['type'] !== OPENSSL_KEYTYPE_EC) {
-                    throw new AsymmetricCipherException('提供的密钥不是ED448密钥');
-                }
-                
-                // 使用OpenSSL签名
-                $signature = '';
-                if (!openssl_sign($data, $signature, $privKey, OPENSSL_ALGO_ED448)) {
-                    throw new AsymmetricCipherException('Ed448签名失败: ' . openssl_error_string());
-                }
-                
-                return $signature;
-            } catch (\Exception $e) {
-                throw new AsymmetricCipherException('Ed448签名失败: ' . $e->getMessage());
+            
+            // 验证私钥类型
+            $details = openssl_pkey_get_details($privKey);
+            if ($details === false || $details['type'] !== OPENSSL_KEYTYPE_EC) {
+                throw new AsymmetricCipherException('提供的密钥不是ED448密钥');
             }
+            
+            // 使用OpenSSL签名
+            $signature = '';
+            if (!openssl_sign($data, $signature, $privKey, self::OPENSSL_ALGO_ED448)) {
+                throw new AsymmetricCipherException('Ed448签名失败: ' . openssl_error_string());
+            }
+            
+            return $signature;
+        } catch (\Exception $e) {
+            throw new AsymmetricCipherException('Ed448签名失败: ' . $e->getMessage());
         }
     }
 
@@ -246,49 +212,30 @@ class Ed448 implements AsymmetricCipherInterface
     {
         $this->checkSupport();
         
-        if (!$this->useOpenSSL) {
-            // 使用libsodium本地实现
-            try {
-                // 验证公钥长度
-                if (strlen($publicKey) !== self::PUBLIC_KEY_BYTES) {
-                    throw new AsymmetricCipherException('无效的Ed448公钥长度');
-                }
-                
-                // 验证签名长度
-                if (strlen($signature) !== self::SIGNATURE_BYTES) {
-                    throw new AsymmetricCipherException('无效的Ed448签名长度');
-                }
-                
-                // 验证签名
-                return sodium_crypto_sign_ed448_verify_detached($signature, $data, $publicKey);
-            } catch (\SodiumException $e) {
-                throw new AsymmetricCipherException('Ed448签名验证失败: ' . $e->getMessage());
+        // 使用OpenSSL替代实现
+        try {
+            // 加载公钥
+            $pubKey = openssl_pkey_get_public($publicKey);
+            if ($pubKey === false) {
+                throw new AsymmetricCipherException('加载Ed448公钥失败: ' . openssl_error_string());
             }
-        } else {
-            // 使用OpenSSL替代实现
-            try {
-                // 加载公钥
-                $pubKey = openssl_pkey_get_public($publicKey);
-                if ($pubKey === false) {
-                    throw new AsymmetricCipherException('加载Ed448公钥失败: ' . openssl_error_string());
-                }
-                
-                // 验证公钥类型
-                $details = openssl_pkey_get_details($pubKey);
-                if ($details === false || $details['type'] !== OPENSSL_KEYTYPE_EC) {
-                    throw new AsymmetricCipherException('提供的密钥不是ED448密钥');
-                }
-                
-                // 使用OpenSSL验证签名
-                $result = openssl_verify($data, $signature, $pubKey, OPENSSL_ALGO_ED448);
-                if ($result === -1) {
-                    throw new AsymmetricCipherException('Ed448签名验证失败: ' . openssl_error_string());
-                }
-                
-                return $result === 1;
-            } catch (\Exception $e) {
-                throw new AsymmetricCipherException('Ed448签名验证失败: ' . $e->getMessage());
+            
+            // 验证公钥类型
+            $details = openssl_pkey_get_details($pubKey);
+            if ($details === false || $details['type'] !== OPENSSL_KEYTYPE_EC) {
+                throw new AsymmetricCipherException('提供的密钥不是ED448密钥');
             }
+            
+            // 验证签名
+            $result = openssl_verify($data, $signature, $pubKey, self::OPENSSL_ALGO_ED448);
+            
+            if ($result === -1) {
+                throw new AsymmetricCipherException('Ed448签名验证失败: ' . openssl_error_string());
+            }
+            
+            return $result === 1;
+        } catch (\Exception $e) {
+            throw new AsymmetricCipherException('Ed448签名验证失败: ' . $e->getMessage());
         }
     }
 }
