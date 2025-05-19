@@ -68,12 +68,7 @@ class X25519 implements KeyExchangeInterface
             throw new KeyExchangeException('无效的X25519公钥长度');
         }
 
-        try {
-            // 使用X25519算法计算共享密钥
-            $sharedSecret = ParagonIE_Sodium_Compat::crypto_scalarmult($privateKey, $publicKey);
-            return $sharedSecret;
-        } catch (\SodiumException $e) {
-            throw new KeyExchangeException('X25519共享密钥计算失败: ' . $e->getMessage());
-        }
+        // 使用X25519算法计算共享密钥
+        return ParagonIE_Sodium_Compat::crypto_scalarmult($privateKey, $publicKey);
     }
 }
