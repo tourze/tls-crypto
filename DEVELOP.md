@@ -127,23 +127,23 @@
 | ✅ AesCtrTest | 已实现 | AES-CTR测试 |
 | ✅ RSATest | 已实现 | RSA测试 |
 | ✅ Ed25519Test | 已实现 | Ed25519签名测试 |
-| ⏳ Ed448Test | 计划实现 | Ed448签名测试 |
+| ✅ Ed448Test | 已实现 | Ed448签名测试 |
 | ✅ ECDSATest | 已实现 | ECDSA签名测试 |
-| ⏳ DSATest | 计划实现 | DSA签名测试 |
+| ✅ DSATest | 已实现 | DSA签名测试 |
 | ✅ NISTP256Test | 已实现 | NIST P-256测试 |
-| ⏳ NISTP384Test | 计划实现 | NIST P-384测试 |
-| ⏳ NISTP521Test | 计划实现 | NIST P-521测试 |
+| ✅ NISTP384Test | 已实现 | NIST P-384测试 |
+| ✅ NISTP521Test | 已实现 | NIST P-521测试 |
 | ✅ ChaCha20Poly1305Test | 已实现 | ChaCha20-Poly1305测试 |
 | ✅ X25519Test | 已实现 | X25519密钥交换测试 |
 | ✅ X448Test | 已实现 | X448密钥交换测试 |
 | ✅ ECDHETest | 已实现 | ECDHE密钥交换测试 |
 | ✅ Curve448Test | 已实现 | Curve448曲线测试 |
-| ⏳ CryptoRandomTest | 计划实现 | 随机数生成器测试 |
-| ⏳ TripleDESTest | 计划实现 | 3DES加密测试 |
-| ⏳ GMACTest | 计划实现 | GMAC消息认证码测试 |
+| ✅ CryptoRandomTest | 已实现 | 随机数生成器测试 |
+| ✅ TripleDESTest | 已实现 | 3DES加密测试 |
+| ✅ GMACTest | 已实现 | GMAC消息认证码测试 |
 | ✅ Poly1305Test | 已实现 | Poly1305消息认证码测试 |
-| ⏳ PBKDF2Test | 计划实现 | PBKDF2密钥导出函数测试 |
-| ⏳ DHETest | 计划实现 | DHE密钥交换测试 |
+| ✅ PBKDF2Test | 已实现 | PBKDF2密钥导出函数测试 |
+| ✅ DHETest | 已实现 | DHE密钥交换测试 |
 | ✅ PemDerFormatTest | 已实现 | PEM/DER格式处理测试 |
 
 ## 文档
@@ -223,8 +223,8 @@
 
 #### 4.5 测试与文档 (持续进行)
 
-- ⏳ 实现 CryptoRandomTest 及其他缺失的测试用例
-- ⏳ 为所有新实现的功能添加测试用例
+- ✅ 实现 CryptoRandomTest 及其他缺失的测试用例
+- ✅ 为所有新实现的功能添加测试用例
 - ⏳ 创建更多使用示例和教程文档
 - ⏳ 添加性能比较文档
 - ⏳ 完善 API 文档，增加更多代码示例
@@ -234,12 +234,13 @@
 
 以下是在代码审查中发现的需要特别关注的问题：
 
-1. **缺失的测试用例**：
-   - CryptoRandomTest：尚未实现随机数生成器的测试用例
-   - TripleDESTest：已实现TripleDES但缺少测试用例
-   - GMACTest：已实现GMAC但缺少测试用例
-   - PBKDF2Test：已实现PBKDF2但缺少测试用例
-   - DHETest：已实现DHE但缺少测试用例
+1. **已实现的测试用例**：
+   - 所有计划的测试用例均已实现，包括：
+     - CryptoRandomTest
+     - TripleDESTest
+     - GMACTest
+     - PBKDF2Test
+     - DHETest
 
 2. **需要完善的实现**：
    - ECDHE：已经改进，现在优先使用PHP 8的标准API (openssl_pkey_derive)，仅当低版本PHP时才回退到模拟方法
