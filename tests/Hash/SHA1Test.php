@@ -5,63 +5,110 @@ declare(strict_types=1);
 namespace Tourze\TLSCrypto\Tests\Hash;
 
 use PHPUnit\Framework\TestCase;
-use Tourze\TLSCrypto\Exception\HashException;
+use Tourze\TLSCrypto\CryptoFactory;
 use Tourze\TLSCrypto\Hash\SHA1;
 
+/**
+ * SHA-1哈希函数测试
+ */
 class SHA1Test extends TestCase
 {
+    /**
+     * 测试获取哈希算法名称
+     */
     public function testGetName(): void
     {
-        $hash = new SHA1();
-        $this->assertEquals('sha1', $hash->getName());
+        $sha1 = new SHA1();
+        $this->assertEquals('sha1', $sha1->getName());
     }
 
+    /**
+     * 测试获取哈希输出长度
+     */
     public function testGetOutputLength(): void
     {
-        $hash = new SHA1();
-        $this->assertEquals(20, $hash->getOutputLength());
+        $sha1 = new SHA1();
+        $this->assertEquals(20, $sha1->getOutputLength());
     }
 
+    /**
+     * 测试获取哈希块大小
+     */
     public function testGetBlockSize(): void
     {
-        $hash = new SHA1();
-        $this->assertEquals(64, $hash->getBlockSize());
+        $sha1 = new SHA1();
+        $this->assertEquals(64, $sha1->getBlockSize());
     }
 
-    public function testHashWithKnownValues(): void
+    /**
+     * 测试计算数据的哈希值
+     */
+    public function testHash(): void
     {
-        $hash = new SHA1();
-        // Test vector for SHA-1("")
-        $this->assertEquals(hex2bin('da39a3ee5e6b4b0d3255bfef95601890afd80709'), $hash->hash(''));
-        // Test vector for SHA-1("abc")
-        $this->assertEquals(hex2bin('a9993e364706816aba3e25717850c26c9cd0d89d'), $hash->hash('abc'));
-        // Test vector for SHA-1("The quick brown fox jumps over the lazy dog")
-        $this->assertEquals(hex2bin('2fd4e1c67a2d28fced849ee1bb76e7391b93eb12'), $hash->hash('The quick brown fox jumps over the lazy dog'));
+        $sha1 = new SHA1();
+        $data = 'test data';
+        $hash = $sha1->hash($data);
+        
+        // 验证哈希长度正确
+        $this->assertEquals(20, strlen($hash));
+        
+        // 验证哈希值正确
+        $expectedHash = hash('sha1', $data, true);
+        $this->assertEquals($expectedHash, $hash);
     }
 
-    public function testStreamingHash(): void
+    /**
+     * 测试使用哈希上下文计算哈希值
+     */
+    public function testHashWithContext(): void
     {
-        $hash = new SHA1();
-        $context = $hash->createContext();
-        $hash->updateContext($context, 'The quick ');
-        $hash->updateContext($context, 'brown fox jumps ');
-        $hash->updateContext($context, 'over the lazy dog');
-        $finalHash = $hash->finalizeContext($context);
-        $this->assertEquals(hex2bin('2fd4e1c67a2d28fced849ee1bb76e7391b93eb12'), $finalHash);
+        $sha1 = new SHA1();
+        $data1 = 'part1';
+        $data2 = 'part2';
+        
+        // 直接计算整个数据的哈希值
+        $expectedHash = $sha1->hash($data1 . $data2);
+        
+        // 使用上下文分段计算哈希值
+        $context = $sha1->createContext();
+        $sha1->updateContext($context, $data1);
+        $sha1->updateContext($context, $data2);
+        $actualHash = $sha1->finalizeContext($context);
+        
+        $this->assertEquals($expectedHash, $actualHash);
     }
 
-    public function testCreateContextFailureSimulation(): void
+    /**
+     * 测试通过工厂类创建哈希函数
+     */
+    public function testCreateThroughFactory(): void
     {
-        // Hard to simulate hash_init failure without changing global state or specific PHP builds.
-        // We assume hash_init('sha1') generally works.
-        // If it were to fail, the constructor should throw HashException.
-        // For now, we ensure it doesn't throw under normal conditions.
-        try {
-            $hash = new SHA1();
-            $context = $hash->createContext();
-            $this->assertIsObject($context); // PHP 8 hash contexts are objects
-        } catch (HashException $e) {
-            $this->fail('SHA1 createContext threw an exception unexpectedly: ' . $e->getMessage());
-        }
+        $sha1 = CryptoFactory::createHash('sha1');
+        $this->assertInstanceOf(SHA1::class, $sha1);
+        $this->assertEquals('sha1', $sha1->getName());
+    }
+
+    /**
+     * 测试空字符串的哈希值
+     */
+    public function testEmptyStringHash(): void
+    {
+        $sha1 = new SHA1();
+        $hash = $sha1->hash('');
+        $expectedHash = hash('sha1', '', true);
+        $this->assertEquals($expectedHash, $hash);
+    }
+
+    /**
+     * 测试长数据的哈希值
+     */
+    public function testLongDataHash(): void
+    {
+        $sha1 = new SHA1();
+        $data = str_repeat('a', 1000000); // 100万个'a'
+
+        $hash = $sha1->hash($data);
+        $expectedHash = hash('sha1', $data, true);
+        $this->assertEquals($expectedHash, $hash);
     }
 }

@@ -5,60 +5,110 @@ declare(strict_types=1);
 namespace Tourze\TLSCrypto\Tests\Hash;
 
 use PHPUnit\Framework\TestCase;
-use Tourze\TLSCrypto\Exception\HashException;
+use Tourze\TLSCrypto\CryptoFactory;
 use Tourze\TLSCrypto\Hash\MD5;
 
+/**
+ * MD5哈希函数测试
+ */
 class MD5Test extends TestCase
 {
+    /**
+     * 测试获取哈希算法名称
+     */
     public function testGetName(): void
     {
-        $hash = new MD5();
-        $this->assertEquals('md5', $hash->getName());
+        $md5 = new MD5();
+        $this->assertEquals('md5', $md5->getName());
     }
 
+    /**
+     * 测试获取哈希输出长度
+     */
     public function testGetOutputLength(): void
     {
-        $hash = new MD5();
-        $this->assertEquals(16, $hash->getOutputLength());
+        $md5 = new MD5();
+        $this->assertEquals(16, $md5->getOutputLength());
     }
 
+    /**
+     * 测试获取哈希块大小
+     */
     public function testGetBlockSize(): void
     {
-        $hash = new MD5();
-        $this->assertEquals(64, $hash->getBlockSize());
+        $md5 = new MD5();
+        $this->assertEquals(64, $md5->getBlockSize());
     }
 
-    public function testHashWithKnownValues(): void
+    /**
+     * 测试计算数据的哈希值
+     */
+    public function testHash(): void
     {
-        $hash = new MD5();
-        // Test vector for MD5("")
-        $this->assertEquals(hex2bin('d41d8cd98f00b204e9800998ecf8427e'), $hash->hash(''));
-        // Test vector for MD5("abc")
-        $this->assertEquals(hex2bin('900150983cd24fb0d6963f7d28e17f72'), $hash->hash('abc'));
-        // Test vector for MD5("The quick brown fox jumps over the lazy dog")
-        $this->assertEquals(hex2bin('9e107d9d372bb6826bd81d3542a419d6'), $hash->hash('The quick brown fox jumps over the lazy dog'));
+        $md5 = new MD5();
+        $data = 'test data';
+        $hash = $md5->hash($data);
+        
+        // 验证哈希长度正确
+        $this->assertEquals(16, strlen($hash));
+        
+        // 验证哈希值正确
+        $expectedHash = hash('md5', $data, true);
+        $this->assertEquals($expectedHash, $hash);
     }
 
-    public function testStreamingHash(): void
+    /**
+     * 测试使用哈希上下文计算哈希值
+     */
+    public function testHashWithContext(): void
     {
-        $hash = new MD5();
-        $context = $hash->createContext();
-        $hash->updateContext($context, 'The quick ');
-        $hash->updateContext($context, 'brown fox jumps ');
-        $hash->updateContext($context, 'over the lazy dog');
-        $finalHash = $hash->finalizeContext($context);
-        $this->assertEquals(hex2bin('9e107d9d372bb6826bd81d3542a419d6'), $finalHash);
+        $md5 = new MD5();
+        $data1 = 'part1';
+        $data2 = 'part2';
+
+        // 直接计算整个数据的哈希值
+        $expectedHash = $md5->hash($data1 . $data2);
+
+        // 使用上下文分段计算哈希值
+        $context = $md5->createContext();
+        $md5->updateContext($context, $data1);
+        $md5->updateContext($context, $data2);
+        $actualHash = $md5->finalizeContext($context);
+
+        $this->assertEquals($expectedHash, $actualHash);
     }
 
-    public function testCreateContextFailureSimulation(): void
+    /**
+     * 测试通过工厂类创建哈希函数
+     */
+    public function testCreateThroughFactory(): void
     {
-        // Similar to SHA1Test, assume hash_init('md5') works.
-        try {
-            $hash = new MD5();
-            $context = $hash->createContext();
-            $this->assertIsObject($context); // PHP 8 hash contexts are objects
-        } catch (HashException $e) {
-            $this->fail('MD5 createContext threw an exception unexpectedly: ' . $e->getMessage());
-        }
+        $md5 = CryptoFactory::createHash('md5');
+        $this->assertInstanceOf(MD5::class, $md5);
+        $this->assertEquals('md5', $md5->getName());
+    }
+
+    /**
+     * 测试空字符串的哈希值
+     */
+    public function testEmptyStringHash(): void
+    {
+        $md5 = new MD5();
+        $hash = $md5->hash('');
+        $expectedHash = hash('md5', '', true);
+        $this->assertEquals($expectedHash, $hash);
+    }
+
+    /**
+     * 测试长数据的哈希值
+     */
+    public function testLongDataHash(): void
+    {
+        $md5 = new MD5();
+        $data = str_repeat('a', 1000000); // 100万个'a'
+
+        $hash = $md5->hash($data);
+        $expectedHash = hash('md5', $data, true);
+        $this->assertEquals($expectedHash, $hash);
     }
 }

@@ -13,6 +13,7 @@ use Tourze\TLSCrypto\Cipher\AesCbc;
 use Tourze\TLSCrypto\Cipher\AesCtr;
 use Tourze\TLSCrypto\Cipher\AesGcm;
 use Tourze\TLSCrypto\Cipher\ChaCha20Poly1305;
+use Tourze\TLSCrypto\Cipher\TripleDES;
 use Tourze\TLSCrypto\Contract\AsymmetricCipherInterface;
 use Tourze\TLSCrypto\Contract\CipherInterface;
 use Tourze\TLSCrypto\Contract\CurveInterface;
@@ -22,14 +23,23 @@ use Tourze\TLSCrypto\Contract\KeyExchangeInterface;
 use Tourze\TLSCrypto\Contract\MacInterface;
 use Tourze\TLSCrypto\Contract\RandomInterface;
 use Tourze\TLSCrypto\Exception\CryptoException;
+use Tourze\TLSCrypto\Hash\MD5;
+use Tourze\TLSCrypto\Hash\SHA1;
 use Tourze\TLSCrypto\Hash\SHA256;
 use Tourze\TLSCrypto\Hash\SHA384;
 use Tourze\TLSCrypto\Hash\SHA512;
 use Tourze\TLSCrypto\Kdf\HKDF;
+use Tourze\TLSCrypto\Kdf\PBKDF2;
+use Tourze\TLSCrypto\KeyExchange\DHE;
 use Tourze\TLSCrypto\KeyExchange\ECDHE;
 use Tourze\TLSCrypto\KeyExchange\X25519;
 use Tourze\TLSCrypto\KeyExchange\X448;
+use Tourze\TLSCrypto\KeyFormat\CertificateHandler;
+use Tourze\TLSCrypto\KeyFormat\KeyHandler;
+use Tourze\TLSCrypto\KeyFormat\PemDerFormat;
+use Tourze\TLSCrypto\Mac\GMAC;
 use Tourze\TLSCrypto\Mac\HMAC;
+use Tourze\TLSCrypto\Mac\Poly1305;
 use Tourze\TLSCrypto\Random\CryptoRandom;
 
 /**
@@ -60,6 +70,8 @@ class CryptoFactory
             'sha256' => new SHA256(),
             'sha384' => new SHA384(),
             'sha512' => new SHA512(),
+            'sha1' => new SHA1(),
+            'md5' => new MD5(),
             default => throw new CryptoException('不支持的哈希算法: ' . $algorithm),
         };
     }
@@ -78,6 +90,18 @@ class CryptoFactory
             $hashAlgorithm = substr($algorithm, 5);
             $hash = self::createHash($hashAlgorithm);
             return new HMAC($hash);
+        }
+
+        if (str_starts_with($algorithm, 'gmac-')) {
+            $keySize = (int) substr($algorithm, 5);
+            if (!in_array($keySize, [128, 192, 256])) {
+                throw new CryptoException('无效的GMAC密钥大小，有效值为128、192或256位');
+            }
+            return new GMAC($keySize);
+        }
+
+        if ($algorithm === 'poly1305') {
+            return new Poly1305();
         }
 
         throw new CryptoException('不支持的MAC算法: ' . $algorithm);
@@ -112,6 +136,14 @@ class CryptoFactory
             return new ChaCha20Poly1305();
         }
 
+        if (in_array($algorithm, ['3des', 'des-ede3-cbc', 'des-ede-cbc'])) {
+            $keySize = 192; // 默认使用192位密钥（完全版本的3DES）
+            if ($algorithm === 'des-ede-cbc') {
+                $keySize = 128; // 使用128位密钥（兼容版本）
+            }
+            return new TripleDES($keySize);
+        }
+
         throw new CryptoException('不支持的加密算法: ' . $algorithm);
     }
 
@@ -129,6 +161,13 @@ class CryptoFactory
             $hashAlgorithm = substr($algorithm, 5);
             $hash = self::createHash($hashAlgorithm);
             return new HKDF($hash);
+        }
+
+        if (str_starts_with($algorithm, 'pbkdf2-')) {
+            $hashAlgorithm = substr($algorithm, 7);
+            $hash = self::createHash($hashAlgorithm);
+            $iterations = $options['iterations'] ?? 10000;
+            return new PBKDF2($hash, $iterations);
         }
 
         throw new CryptoException('不支持的KDF算法: ' . $algorithm);
@@ -168,6 +207,7 @@ class CryptoFactory
             'x25519' => new X25519(),
             'x448' => new X448(),
             'ecdhe' => new ECDHE(),
+            'dhe' => new DHE(),
             default => throw new CryptoException('不支持的密钥交换算法: ' . $algorithm),
         };
     }
@@ -188,6 +228,23 @@ class CryptoFactory
             'curve25519' => new Curve\Curve25519(),
             'curve448' => new Curve\Curve448(),
             default => throw new CryptoException('不支持的椭圆曲线: ' . $curveName),
+        };
+    }
+
+    /**
+     * 创建密钥格式处理组件
+     *
+     * @param string $type 处理类型，可选值：'basic'（基本PEM/DER转换）、'cert'（证书处理）、'key'（密钥处理）
+     * @return object 相应的处理类实例
+     * @throws CryptoException 如果类型不支持
+     */
+    public static function createKeyFormat(string $type): object
+    {
+        return match ($type) {
+            'basic' => new PemDerFormat(),
+            'cert' => new CertificateHandler(),
+            'key' => new KeyHandler(),
+            default => throw new CryptoException('不支持的密钥格式处理类型: ' . $type),
         };
     }
 }

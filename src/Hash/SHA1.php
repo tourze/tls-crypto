@@ -10,8 +10,10 @@ use Tourze\TLSCrypto\Exception\HashException;
 /**
  * SHA-1哈希函数实现
  *
- * 安全警告：SHA-1已被认为是不安全的，不应用于证书签名或安全敏感场景。
- * 此实现仅用于兼容性目的，如TLS 1.0/1.1兼容性或验证旧数据。
+ * 安全警告：SHA-1被认为是不安全的，已经被密码学家成功碰撞。
+ * 它不应该用于数字签名、证书或其他需要抗碰撞保护的应用场景。
+ * 仅在需要兼容旧系统或遗留协议时使用。
+ * 对于安全敏感的应用，应使用SHA-256或更强的哈希函数。
  */
 class SHA1 implements HashInterface
 {
@@ -93,4 +95,4 @@ class SHA1 implements HashInterface
     {
         return hash_final($context, true);
     }
-} 
+}

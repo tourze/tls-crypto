@@ -18,6 +18,7 @@ use Tourze\TLSCrypto\Hash\SHA256;
 use Tourze\TLSCrypto\Kdf\HKDF;
 use Tourze\TLSCrypto\KeyExchange\ECDHE;
 use Tourze\TLSCrypto\KeyExchange\X448;
+use Tourze\TLSCrypto\KeyFormat;
 use Tourze\TLSCrypto\Mac\HMAC;
 use Tourze\TLSCrypto\Random\CryptoRandom;
 
@@ -302,5 +303,35 @@ class CryptoFactoryTest extends TestCase
         // 测试不支持的曲线
         $this->expectException(CryptoException::class);
         CryptoFactory::createCurve('unsupported-curve');
+    }
+
+    public function testCreateCurveWithInvalidAlgorithm(): void
+    {
+        $this->expectException(CryptoException::class);
+        CryptoFactory::createCurve('invalid-curve');
+    }
+
+    /**
+     * 测试创建密钥格式处理组件
+     */
+    public function testCreateKeyFormat(): void
+    {
+        $pemDerFormat = CryptoFactory::createKeyFormat('basic');
+        $this->assertInstanceOf(KeyFormat\PemDerFormat::class, $pemDerFormat);
+
+        $certHandler = CryptoFactory::createKeyFormat('cert');
+        $this->assertInstanceOf(KeyFormat\CertificateHandler::class, $certHandler);
+
+        $keyHandler = CryptoFactory::createKeyFormat('key');
+        $this->assertInstanceOf(KeyFormat\KeyHandler::class, $keyHandler);
+    }
+
+    /**
+     * 测试创建密钥格式处理组件（无效类型）
+     */
+    public function testCreateKeyFormatWithInvalidType(): void
+    {
+        $this->expectException(CryptoException::class);
+        CryptoFactory::createKeyFormat('invalid-type');
     }
 }

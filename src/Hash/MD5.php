@@ -10,8 +10,16 @@ use Tourze\TLSCrypto\Exception\HashException;
 /**
  * MD5哈希函数实现
  *
- * 严重安全警告：MD5已被公认为密码学上不安全，存在碰撞攻击，不应用于证书签名、
- * 密码存储或任何安全敏感场景。此实现仅用于兼容性目的，如旧版TLS实现或验证旧数据。
+ * 严重安全警告：MD5被认为是完全不安全的，已被成功碰撞且计算速度非常快。
+ * 它不应该用于任何安全场景，包括但不限于：
+ * - 数字签名
+ * - 密码存储
+ * - 安全令牌
+ * - 证书验证
+ * - 数据完整性保护
+ *
+ * 此实现仅用于兼容旧系统或协议，或在不涉及安全的场景下使用。
+ * 对于任何安全相关的用途，请使用SHA-256或更强的哈希函数。
  */
 class MD5 implements HashInterface
 {
@@ -93,4 +101,4 @@ class MD5 implements HashInterface
     {
         return hash_final($context, true);
     }
-} 
+}
