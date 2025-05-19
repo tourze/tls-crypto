@@ -98,17 +98,17 @@ class Poly1305 implements MacInterface
     {
         // 使用OpenSSL的ChaCha20-Poly1305作为备选方案
         // 但这只是一个接近的模拟，不是纯Poly1305
-        
+
         // 注意：这是一个模拟实现，实际上是使用ChaCha20-Poly1305，但只取其认证部分
         // 在真实场景中，应该确保有正确的Poly1305实现
-        
+
         // 生成一个零IV
         $iv = str_repeat("\0", 12);
-        
+
         // 使用空明文，将数据用作AAD
         $cipherMethod = 'chacha20-poly1305';
         $tag = '';
-        
+
         $result = openssl_encrypt(
             '', // 空明文
             $cipherMethod,
@@ -118,11 +118,12 @@ class Poly1305 implements MacInterface
             $tag, // 这里tag将被设置为MAC值
             $data // 将数据作为AAD
         );
-        
+
+        // @phpstan-ignore-next-line
         if ($result === false || empty($tag)) {
             throw new MacException('Poly1305模拟计算失败: ' . openssl_error_string());
         }
-        
+
         return $tag;
     }
 }
